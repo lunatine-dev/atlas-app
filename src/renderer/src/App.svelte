@@ -15,7 +15,25 @@
     // State
     let isLoading = $state(true);
     let currentView = $state("home");
+    let showDebug = $state(true);
+    let totalSeconds = $state(0);
+
+    // Voice state
+    let status = $state("IDLE");
+    let transcriptHistory = $state([]);
     let vadEnabled = $state(false);
+
+    let uptimeString = $derived.by(() => {
+        const h = Math.floor(totalSeconds / 3600)
+            .toString()
+            .padStart(2, "0");
+        const m = Math.floor((totalSeconds % 3600) / 60)
+            .toString()
+            .padStart(2, "0");
+        const s = (totalSeconds % 60).toString().padStart(2, "0");
+
+        return `${h}:${m}:${s}`;
+    });
 
     // Logic
     import { onMount } from "svelte";
@@ -23,6 +41,12 @@
         setTimeout(() => {
             isLoading = false;
         }, 2000);
+
+        const interval = setInterval(() => {
+            totalSeconds += 1;
+        }, 1000);
+
+        return () => clearInterval(interval); // Clean up on app close
     });
 </script>
 
@@ -106,7 +130,7 @@
 
             <div class="flex-1 overflow-y-auto px-12 py-10">
                 {#if currentView === "home"}
-                    <Home {vadEnabled} />
+                    <Home {vadEnabled} {transcriptHistory} {status} {uptimeString} />
                 {:else if currentView === "plugins"}
                     <Plugins />
                 {:else if currentView === "settings"}
@@ -114,6 +138,59 @@
                 {/if}
             </div>
         </div>
+        {#if showDebug}
+            <div
+                class="fixed bottom-4 right-4 z-[100] bg-black/80 backdrop-blur-md border border-white/10 p-3 rounded-2xl shadow-2xl flex flex-col gap-2"
+            >
+                <div class="flex justify-between items-center mb-1 px-1">
+                    <span class="text-[9px] font-mono text-cyan-500/50 uppercase tracking-widest">Debug Console</span>
+                    <button onclick={() => (showDebug = false)} class="text-white/20 hover:text-white text-xs">×</button
+                    >
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button
+                        onclick={() => (vadEnabled = !vadEnabled)}
+                        class="px-3 py-2 rounded-lg border border-white/5 text-[10px] font-mono transition-colors
+          {vadEnabled ? 'bg-cyan-500/20 text-cyan-400' : 'bg-red-500/20 text-red-400'}"
+                    >
+                        VAD: {vadEnabled ? "ON" : "OFF"}
+                    </button>
+
+                    <button
+                        onclick={() => (status = "IDLE")}
+                        class="px-3 py-2 rounded-lg border border-white/5 bg-white/5 text-[10px] font-mono hover:bg-white/10 text-slate-300"
+                    >
+                        SET_IDLE
+                    </button>
+
+                    <button
+                        onclick={() => (status = "LISTENING")}
+                        class="px-3 py-2 rounded-lg border border-white/5 bg-cyan-500/10 text-[10px] font-mono hover:bg-cyan-500/20 text-cyan-400"
+                    >
+                        SET_LISTEN
+                    </button>
+
+                    <button
+                        onclick={() => (status = "PROCESSING")}
+                        class="px-3 py-2 rounded-lg border border-white/5 bg-purple-500/10 text-[10px] font-mono hover:bg-purple-500/20 text-purple-400"
+                    >
+                        SET_PROC
+                    </button>
+                </div>
+
+                <button
+                    onclick={() => {
+                        const lines = ["Hello Atlas", "What time is it?", "Sync my lights", "Play music"];
+                        const randomLine = lines[Math.floor(Math.random() * lines.length)];
+                        transcriptHistory = [...transcriptHistory, randomLine];
+                    }}
+                    class="w-full py-2 rounded-lg border border-white/5 bg-white/5 text-[10px] font-mono hover:bg-white/10 text-slate-400"
+                >
+                    + MOCK_TRANSCRIPT
+                </button>
+            </div>
+        {/if}
     </main>
 {/if}
 
